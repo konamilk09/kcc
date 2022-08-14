@@ -10,6 +10,7 @@ typedef struct Node Node;
 
 Node *expr();
 Node *mul();
+Node *unary();
 Node *primary();
 
 // トークン
@@ -185,18 +186,27 @@ Node *expr() {
 }
 
 Node *mul() {
-  Node *node = primary();
+  Node *node = unary();
 
   while(!at_eof()) {
     if(consume('*')) {
-      node = new_node(ND_MUL, node, primary());
+      node = new_node(ND_MUL, node, unary());
     }
     else if(consume('/')) {
-      node = new_node(ND_DIV, node, primary());
+      node = new_node(ND_DIV, node, unary());
     }
     else return node;
   }
   return node;
+}
+
+// 単項プラスと単項マイナス
+Node *unary() {
+  if(consume('+'))
+    return primary();
+  if(consume('-')) 
+    return new_node(ND_SUB, new_node_num(0), primary());
+  return primary();
 }
 
 Node *primary() {
