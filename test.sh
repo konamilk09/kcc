@@ -27,4 +27,19 @@ assert 2 "4/2"
 assert 4 "(3+1)"
 assert 4 "(5+3)/2"
 
+assert 1 "1==1"
+assert 0 "1==0"
+assert 0 "1!=1"
+assert 1 "1!=0+40"
+
+assert 1 "41>(0+40)"
+assert 0 " 3*1>5-1"
+assert 0 " 3*1<5/2"
+assert 1 " 1<2"
+
+assert 1 "43/3>=(20-3)/3"
+assert 0 "1>=2"
+assert 0 "1<=0"
+assert 1 "(20+4)*1<=43"
+
 echo OK
