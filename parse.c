@@ -1,88 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include <stdarg.h>
-#include <string.h>
 
-typedef struct Token Token;
-typedef struct Node Node;
+#include "kcc.h"
 
-Node *expr();
 Node *equality();
 Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
-
-// トークン
-Token *token;
-
-// 入力プログラム
-char *user_input;
-
-// トークンの種類
-typedef enum {
-  TK_RESERVED, // 記号
-  TK_NUM,      // 整数トークン
-  TK_EOF,      // 入力の終わりを表すトークン
-} TokenKind;
-
-// トークン型
-struct Token {
-  TokenKind kind; // トークンの型
-  Token *next;    // 次の入力トークン
-  int val;        // kindがTK_NUMの場合、その数値
-  char *str;      // トークン文字列
-  int len;        // トークンの長さ
-};
-
-// 抽象構文木の要素の種類
-typedef enum {
-  ND_ADD, // 加法演算子
-  ND_SUB, // 減法演算子
-  ND_MUL, // 乗法演算子
-  ND_DIV, // 除法演算子
-  ND_NUM, // 数字ノード
-  ND_EQ,  // ==
-  ND_NEQ, // !=
-  ND_LT,  // <  (less than)
-  ND_LE,  // <= (less than or equal)
-} NodeKind;
-
-// ノード型
-struct Node {
-  NodeKind kind; // ノードの型
-  Node *lhs; // 左ノード
-  Node *rhs; // 右ノード
-  int val; // kindがND_NUMの場合、その数値
-};
-
-// エラーを報告する
-// エラーの位置も伝える
-void error_at(char *loc, char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-
-  int pos = loc - user_input;
-  fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%*s", pos, " "); // *でpos個出力する
-  fprintf(stderr, "^ ");
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
-}
-
-// エラーを報告するための関数
-// printfと同じ引数を取る
-void error(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
-}
 
 // 文字を受け取ってトークンと一致していたらtrueを返す。トークンを1つ進める
 // そうでなければfalseを返す
@@ -280,88 +209,4 @@ Node *primary() {
   }
 
   return new_node_num(expect_number());
-}
-
-// 1つのノードを受け取って再帰的にアセンブリを出力する
-void gen(Node *node) {
-  if(node->kind == ND_NUM) {
-    printf("  push %d\n", node->val);
-    return;
-  }
-
-  gen(node->lhs); // 最終的には値1つがスタックにpushされる
-  gen(node->rhs);
-
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-
-  switch (node->kind) {
-    case ND_ADD:
-      printf("  add rax, rdi\n");
-      break;
-    case ND_SUB:
-      printf("  sub rax, rdi\n");
-      break;
-    case ND_MUL:
-      printf("  imul rax, rdi\n");
-      break;
-    case ND_DIV:
-      printf("  cqo\n"); // raxにある値を128bitに伸ばしてrdxとraxに入れる
-      printf("  idiv rdi\n"); // rdxとraxにある値をrdiで割り、商をrax、余りをrdxにセットする
-      break;
-    case ND_EQ:
-      printf("  cmp rax, rdi\n");
-      printf("  sete al\n"); // cmpで比べた2つのレジスタの値が同じだった場合は1、それ以外は0
-      printf("  movzb rax, al\n"); //
-      break;
-    case ND_NEQ:
-      printf("  cmp rax, rdi\n");
-      printf("  setne al\n"); // cmpで比べた2つのレジスタの値が異なる場合は1、それ以外は0
-      printf("  movzb rax, al\n");
-      break;
-    case ND_LT:
-      printf("  cmp rax, rdi\n");
-      printf("  setl al\n"); // cmpで比べた2つのレジスタの値が異なる場合は1、それ以外は0
-      printf("  movzb rax, al\n");
-      break;
-    case ND_LE:
-      printf("  cmp rax, rdi\n");
-      printf("  setle al\n"); // cmpで比べた2つのレジスタの値が異なる場合は1、それ以外は0
-      printf("  movzb rax, al\n");
-      break;
-  }
-
-  printf("  push rax\n");
-
-  return;
-}
-
-int main(int argc, char **argv) {
-  if (argc != 2) {
-    error("%s: invalid number of arguments", argv[0]);
-    return 1;
-  }
-
-  user_input = argv[1];
-
-  // トークナイズする
-  token = tokenize(user_input);
-
-  // 抽象構文木を作る==パースする
-  // パースするとは、プログラムのソースコードなど一定の文法に従って記述されたテキストを解析し扱いやすいデータ構造に変換すること
-  Node *node = expr();
-
-  // アセンブリ前半部分を出力
-  printf(".intel_syntax noprefix\n");
-  printf(".globl main\n");
-  printf("main:\n");
-
-  // 抽象構文木を下りながらコード生成
-  gen(node);
-
-  // スタックトップに式全体の値が残っているはずなので
-  // それをraxにロードして関数からの返り値とする
-  printf("  pop rax\n");
-  printf("  ret\n");
-  return 0;
 }
