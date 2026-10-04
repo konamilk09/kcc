@@ -4,7 +4,7 @@ typedef struct Token Token;
 typedef struct Node Node;
 
 Token* tokenize(char* p);
-Node *expr();
+void program();
 void gen(Node *node);
 
 void error_at(char *loc, char *fmt, ...);
@@ -16,9 +16,13 @@ extern Token *token;
 // 入力プログラム
 extern char *user_input;
 
+// パース後のプログラム
+extern Node *code[100];
+
 // トークンの種類
 typedef enum {
   TK_RESERVED, // 記号
+  TK_IDENT,    // 識別子
   TK_NUM,      // 整数トークン
   TK_EOF,      // 入力の終わりを表すトークン
 } TokenKind;
@@ -43,6 +47,8 @@ typedef enum {
   ND_NEQ, // !=
   ND_LT,  // <  (less than)
   ND_LE,  // <= (less than or equal)
+  ND_LVAR, // ローカル変数
+  ND_ASSIGN, // =
 } NodeKind;
 
 // ノード型
@@ -51,4 +57,5 @@ struct Node {
   Node *lhs; // 左ノード
   Node *rhs; // 右ノード
   int val; // kindがND_NUMの場合、その数値
+  int offset; // ローカル変数のベースポインタからのオフセット。今は名前で固定なので構文解析時に決まる
 };
