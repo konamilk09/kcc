@@ -1,23 +1,16 @@
 #include <stdarg.h>
 
 typedef struct Token Token;
-typedef struct Node Node;
-
-Token* tokenize(char* p);
-void program();
-void gen(Node *node);
 
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
 
-// トークン
+extern char *user_input;
 extern Token *token;
 
-// 入力プログラム
-extern char *user_input;
-
-// パース後のプログラム
-extern Node *code[100];
+//
+// tokenize.c
+//
 
 // トークンの種類
 typedef enum {
@@ -36,6 +29,22 @@ struct Token {
   int len;        // トークンの長さ
 };
 
+
+Token* tokenize(char* p);
+
+
+//
+// parse.c
+//
+
+typedef struct Var Var;
+// Local variable
+struct Var {
+  Var *next;
+  char *name;
+  int offset;
+};
+
 // 抽象構文木の要素の種類
 typedef enum {
   ND_ADD, // 加法演算子
@@ -47,15 +56,31 @@ typedef enum {
   ND_NEQ, // !=
   ND_LT,  // <  (less than)
   ND_LE,  // <= (less than or equal)
-  ND_LVAR, // ローカル変数
+  ND_VAR, // Local variable
   ND_ASSIGN, // =
 } NodeKind;
 
 // ノード型
+typedef struct Node Node;
 struct Node {
+  Node *next;
   NodeKind kind; // ノードの型
   Node *lhs; // 左ノード
   Node *rhs; // 右ノード
   int val; // kindがND_NUMの場合、その数値
-  int offset; // ローカル変数のベースポインタからのオフセット。今は名前で固定なので構文解析時に決まる
+  Var *var; // kindがND_VARの場合、参照するローカル変数
 };
+
+typedef struct {
+  Node *node;
+  Var *locals;
+  int stack_size;
+} Program;
+
+Program *program();
+
+//
+// codegen.c
+//
+
+void codegen(Program *prog);

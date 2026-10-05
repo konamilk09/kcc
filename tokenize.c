@@ -49,8 +49,11 @@ Token* tokenize(char* p) {
       cur->len = p - q;
       continue;
     }
-    if('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, (char*)p++, 1);
+    if(isalpha(*p)) {
+      char *start = p++;
+      while(isalnum(*p))
+        p++;
+      cur = new_token(TK_IDENT, cur, start, p - start);
       continue;
     }
     error_at(p, "トークナイズできません");

@@ -16,6 +16,7 @@ assert() {
   fi
 }
 
+assert 1 "foo = 1;"
 assert 0 "0;"
 assert 42 "42;"
 assert 21 "5+20-4;"
@@ -48,5 +49,8 @@ assert 41 "c=42;d=41;"
 assert 42 "z=42;"
 # assert 42 "a+1=42;"
 assert 14 "a = 3; b = 5 * 6 - 8; a + b / 2;"
+assert 6 "foo = 1;
+bar = 2 + 3;
+foo + bar;"
 
 echo OK

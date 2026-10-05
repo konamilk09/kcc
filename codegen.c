@@ -1,15 +1,42 @@
 #include "kcc.h"
 #include <stdio.h>
 
+void gen(Node *node);
+
 // ノードを受け取って、変数だった場合、アドレスを計算してスタックにプッシュする
 // 変数でない場合、エラーを表示する。
-void gen_lval(Node *node) {
-  if (node->kind != ND_LVAR)
+void gen_val(Node *node) {
+  if (node->kind != ND_VAR)
     error("代入の左辺値が変数ではありません");
 
   printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
+  printf("  sub rax, %d\n", node->var->offset);
   printf("  push rax\n");
+}
+
+void codegen(Program *prog) {
+  printf(".intel_syntax noprefix\n");
+  printf(".globl main\n");
+  printf("main:\n");
+
+  // Prologue
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, %d\n", prog->stack_size); // ローカル変数に必要な領域を確保する
+
+  // Generate code from the beginning of the list
+  for(Node *node = prog->node; node; node = node->next) {
+    gen(node);
+
+    // Pop the last result
+    printf("  pop rax\n");
+  }
+
+  // Epilogue
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
+  return;
 }
 
 // 1つのノードを受け取って再帰的にアセンブリを出力する
@@ -18,15 +45,15 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
-    case ND_LVAR:
-      gen_lval(node);
+    case ND_VAR:
+      gen_val(node);
 
       printf("  pop rax\n");
       printf("  mov rax, [rax]\n");
       printf("  push rax\n");
       return;
     case ND_ASSIGN:
-      gen_lval(node->lhs);
+      gen_val(node->lhs);
       gen(node->rhs);
 
       printf("  pop rdi\n");

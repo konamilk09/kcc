@@ -7,6 +7,7 @@
 
 Node *expr();
 Node *assign();
+Var *locals;
 
 // 文字を受け取ってトークンと一致していたらtrueを返す。トークンを1つ進める
 // そうでなければfalseを返す
@@ -76,6 +77,37 @@ Node *new_node_num(int val) {
   return node;
 }
 
+Var *push_var(char *name) {
+  Var *var = calloc(1, sizeof(Var));
+  var->next = locals;
+  var->name = name;
+  locals = var;
+  return var;
+}
+
+Node *new_var(Var *var) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_VAR;
+  node->var = var;
+  return node;
+}
+
+// Find the loval variable with the same variable name as the given token.
+// Return NULL if no matching variable is found.
+Var *find_var(Token *tok) {
+  for (Var *var = locals; var; var = var->next)
+    if (strlen(var->name) == tok->len && !memcmp(var->name, tok->str, tok->len))
+      return var;
+  return NULL;
+}
+
+char *copy_name(char *p, int len) {
+  char *buf = malloc(len + 1);
+  strncpy(buf, p, len);
+  buf[len] = '\0';
+  return buf;
+}
+
 // 再帰下降構文解析
 
 Node *primary() {
@@ -87,10 +119,11 @@ Node *primary() {
 
   Token *tok = consume_ident();
   if(tok) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
-    return node;
+    Var *var = find_var(tok);
+    if (!var) {
+      var = push_var(copy_name(tok->str, tok->len));
+    }
+    return new_var(var);
   }
 
   return new_node_num(expect_number());
@@ -190,9 +223,29 @@ Node *stmt() {
   return node;
 }
 
-void program() {
-  int i = 0;
-  while (!at_eof())
-    code[i++] = stmt();
-  code[i] = NULL;
+Program *program() {
+  locals = NULL;
+
+  // Parse each statement delimited by ';'
+  Node head;
+  head.next = NULL;
+  Node *cur = &head;
+
+  while (!at_eof()) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+
+  // Assign offsets to local variables;
+  int offset = 0;
+  for (Var *var = locals; var; var = var->next) {
+    offset += 8;
+    var->offset = offset;
+  }
+
+  Program *prog = calloc(1, sizeof(Program));
+  prog->node = head.next;
+  prog->locals = locals;
+  prog->stack_size = offset;
+  return prog;
 }
