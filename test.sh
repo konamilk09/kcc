@@ -17,6 +17,9 @@ assert() {
 }
 
 assert 1 "foo = 1;"
+assert 5 "return 5; return 8;"
+assert 84 "p1 = 2; p2 = p1 * 21; return foo = p1 * p2;"
+
 assert 0 "0;"
 assert 42 "42;"
 assert 21 "5+20-4;"

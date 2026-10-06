@@ -28,8 +28,9 @@ void codegen(Program *prog) {
   for(Node *node = prog->node; node; node = node->next) {
     gen(node);
 
-    // Pop the last result
-    printf("  pop rax\n");
+    // Pop the result of an expression statement.
+    if (node->kind != ND_RETURN)
+      printf("  pop rax\n");
   }
 
   // Epilogue
@@ -60,6 +61,14 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
+      return;
+    case ND_RETURN:
+      gen(node->lhs);
+
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      printf("  ret\n");
       return;
   }
 
